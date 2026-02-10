@@ -114,8 +114,8 @@ streamlit run app.py
 
 ```bash
 # 克隆仓库
-git clone https://github.com/Nyota-tree/llm-eval-pipeline.git
-cd llm-eval-pipeline
+git clone https://github.com/Nyota-tree/PrismEval.git
+cd PrismEval
 
 # 安装依赖
 pip install -r requirements.txt
