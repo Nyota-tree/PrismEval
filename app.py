@@ -13,7 +13,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 
-from prism_eval.providers import LLMClient
+from prism_eval.providers import LLMClient, PROVIDER_ENV_KEYS
 from prism_eval.metrics.extractor import extract_json_from_text, extract_evaluation
 from prism_eval.core.pipeline import run_single_generation, run_single_evaluation, fill_evaluation_prompt
 from prism_eval.core.prompt_generator import (
@@ -24,36 +24,60 @@ from prism_eval.core.prompt_generator import (
 from prism_eval.utils.config_loader import get_config
 from i18n import t
 
+# Provider display name -> internal value
+PROVIDERS = [
+    ("OpenAI", "openai"),
+    ("DeepSeek", "deepseek"),
+    ("Claude (Anthropic)", "anthropic"),
+    ("Gemini", "gemini"),
+]
+MODELS_BY_PROVIDER = {
+    "openai": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
+    "deepseek": ["deepseek-chat", "deepseek-reasoner"],
+    "anthropic": ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"],
+    "gemini": ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"],
+}
 
-def generate_evaluator_prompt_in_app(scenario: str, north_star_metric: str, api_key: str) -> str:
+
+def get_api_key_for_provider(provider: str) -> str:
+    """Return the API key from session state for the given provider."""
+    key_map = {
+        "openai": "api_key_openai",
+        "deepseek": "api_key_deepseek",
+        "anthropic": "api_key_anthropic",
+        "gemini": "api_key_gemini",
+    }
+    return (st.session_state.get(key_map.get((provider or "").lower(), "api_key_deepseek")) or "").strip()
+
+
+def generate_evaluator_prompt_in_app(
+    scenario: str, north_star_metric: str, provider: str, model: str, api_key: str
+) -> str:
     """Generate evaluator prompt in-app (no sys.exit; errors surface in UI)."""
-    prev = os.environ.get("DEEPSEEK_API_KEY")
-    try:
-        os.environ["DEEPSEEK_API_KEY"] = api_key
-        return generate_evaluator_prompt(scenario, north_star_metric, api_key=api_key)
-    finally:
-        if prev is not None:
-            os.environ["DEEPSEEK_API_KEY"] = prev
-        else:
-            os.environ.pop("DEEPSEEK_API_KEY", None)
+    return generate_evaluator_prompt(
+        scenario, north_star_metric, api_key=api_key, provider=provider, model=model
+    )
 
 
-def generate_generation_prompt_in_app(scenario: str, north_star: str, api_key: str) -> str:
+def generate_generation_prompt_in_app(
+    scenario: str, north_star: str, provider: str, model: str, api_key: str
+) -> str:
     """Generate business (generation) prompt from scenario and north-star metric."""
-    user_prompt = f"""Business scenario:\n{scenario}\n\nNorth star metric:\n{north_star}\n\nGenerate a production-ready business prompt (output only the prompt text)."""
-    prev = os.environ.get("DEEPSEEK_API_KEY")
+    env_key = PROVIDER_ENV_KEYS.get((provider or "deepseek").lower(), "DEEPSEEK_API_KEY")
+    prev = os.environ.get(env_key)
     try:
-        os.environ["DEEPSEEK_API_KEY"] = api_key
-        llm_client = LLMClient(provider="deepseek", model=st.session_state.get("model", DEFAULT_MODEL))
+        os.environ[env_key] = api_key
+        llm_client = LLMClient(provider=provider, model=model)
+        user_prompt = f"""Business scenario:\n{scenario}\n\nNorth star metric:\n{north_star}\n\nGenerate a production-ready business prompt (output only the prompt text)."""
         return llm_client.generate(
             system_prompt=GENERATION_PROMPT_GENERATOR_SYSTEM,
             user_prompt=user_prompt,
         )
     finally:
         if prev is not None:
-            os.environ["DEEPSEEK_API_KEY"] = prev
+            os.environ[env_key] = prev
         else:
-            os.environ.pop("DEEPSEEK_API_KEY", None)
+            os.environ.pop(env_key, None)
 
 
 # Page config
@@ -68,8 +92,8 @@ st.set_page_config(
 REQUIRED_CSV_COLUMNS = ["question"]
 OPTIONAL_ANSWER_COLUMN = "expected_answer"
 GENERATED_ANSWER_COLUMN = "generated_answer"
+DEFAULT_PROVIDER = "deepseek"
 DEFAULT_MODEL = "deepseek-chat"
-MODEL_OPTIONS = ["deepseek-chat", "deepseek-reasoner"]
 PHASES = ["CONFIG", "GENERATION_PROMPT_EDIT", "GENERATING", "PROMPT_EDIT", "EVALUATING", "RESULT"]
 
 
@@ -79,10 +103,21 @@ def init_session_state() -> None:
         st.session_state.phase = "CONFIG"
     if "lang" not in st.session_state:
         st.session_state.lang = "en"
-    if "api_key" not in st.session_state:
-        st.session_state.api_key = ""
-    if "model" not in st.session_state:
-        st.session_state.model = DEFAULT_MODEL
+    for k in ("api_key_openai", "api_key_deepseek", "api_key_anthropic", "api_key_gemini"):
+        if k not in st.session_state:
+            st.session_state[k] = ""
+    if "gen_provider" not in st.session_state:
+        st.session_state.gen_provider = DEFAULT_PROVIDER
+    if "gen_model" not in st.session_state:
+        st.session_state.gen_model = DEFAULT_MODEL
+    if "prompt_gen_provider" not in st.session_state:
+        st.session_state.prompt_gen_provider = DEFAULT_PROVIDER
+    if "prompt_gen_model" not in st.session_state:
+        st.session_state.prompt_gen_model = DEFAULT_MODEL
+    if "eval_provider" not in st.session_state:
+        st.session_state.eval_provider = DEFAULT_PROVIDER
+    if "eval_model" not in st.session_state:
+        st.session_state.eval_model = DEFAULT_MODEL
     if "scenario" not in st.session_state:
         st.session_state.scenario = ""
     if "north_star" not in st.session_state:
@@ -138,22 +173,102 @@ def render_sidebar():
         )
         st.session_state.lang = lang
 
-        api_key = st.text_input(
-            t("api_key"),
-            value=st.session_state.get("api_key", ""),
+        st.subheader(t("api_keys_section"))
+        st.session_state.api_key_openai = st.text_input(
+            t("api_key_openai"),
+            value=st.session_state.get("api_key_openai", ""),
             type="password",
             placeholder="sk-…",
-            help=t("api_key_help"),
+            key="sidebar_api_openai",
         )
-        st.session_state.api_key = api_key
+        st.session_state.api_key_deepseek = st.text_input(
+            t("api_key_deepseek"),
+            value=st.session_state.get("api_key_deepseek", ""),
+            type="password",
+            placeholder="sk-…",
+            key="sidebar_api_deepseek",
+        )
+        st.session_state.api_key_anthropic = st.text_input(
+            t("api_key_anthropic"),
+            value=st.session_state.get("api_key_anthropic", ""),
+            type="password",
+            placeholder="sk-ant-…",
+            key="sidebar_api_anthropic",
+        )
+        st.session_state.api_key_gemini = st.text_input(
+            t("api_key_gemini"),
+            value=st.session_state.get("api_key_gemini", ""),
+            type="password",
+            placeholder="AIza…",
+            key="sidebar_api_gemini",
+        )
 
-        model = st.selectbox(
-            t("model"),
-            options=MODEL_OPTIONS,
-            index=MODEL_OPTIONS.index(st.session_state.get("model", DEFAULT_MODEL)),
-            help=t("model_help"),
+        st.divider()
+        st.subheader(t("model_generation"))
+        prov_options = [p[1] for p in PROVIDERS]
+        labels = {p[1]: p[0] for p in PROVIDERS}
+        def _provider_index(key: str) -> int:
+            p = st.session_state.get(key, DEFAULT_PROVIDER)
+            return prov_options.index(p) if p in prov_options else 1
+
+        def _model_index(models: list, key: str, default: str) -> int:
+            m = st.session_state.get(key, default)
+            return models.index(m) if m in models else 0
+
+        gen_provider = st.selectbox(
+            t("provider"),
+            options=prov_options,
+            format_func=lambda x: labels.get(x, x),
+            index=_provider_index("gen_provider"),
+            key="sidebar_gen_provider",
         )
-        st.session_state.model = model
+        st.session_state.gen_provider = gen_provider
+        gen_models = MODELS_BY_PROVIDER.get(gen_provider, MODELS_BY_PROVIDER["deepseek"])
+        gen_model = st.selectbox(
+            t("model"),
+            options=gen_models,
+            index=_model_index(gen_models, "gen_model", gen_models[0]),
+            key="sidebar_gen_model",
+        )
+        st.session_state.gen_model = gen_model
+
+        st.divider()
+        st.subheader(t("model_prompt_gen"))
+        prompt_gen_provider = st.selectbox(
+            t("provider"),
+            options=prov_options,
+            format_func=lambda x: labels.get(x, x),
+            index=_provider_index("prompt_gen_provider"),
+            key="sidebar_prompt_gen_provider",
+        )
+        st.session_state.prompt_gen_provider = prompt_gen_provider
+        pg_models = MODELS_BY_PROVIDER.get(prompt_gen_provider, MODELS_BY_PROVIDER["deepseek"])
+        prompt_gen_model = st.selectbox(
+            t("model"),
+            options=pg_models,
+            index=_model_index(pg_models, "prompt_gen_model", pg_models[0]),
+            key="sidebar_prompt_gen_model",
+        )
+        st.session_state.prompt_gen_model = prompt_gen_model
+
+        st.divider()
+        st.subheader(t("model_evaluation"))
+        eval_provider = st.selectbox(
+            t("provider"),
+            options=prov_options,
+            format_func=lambda x: labels.get(x, x),
+            index=_provider_index("eval_provider"),
+            key="sidebar_eval_provider",
+        )
+        st.session_state.eval_provider = eval_provider
+        eval_models = MODELS_BY_PROVIDER.get(eval_provider, MODELS_BY_PROVIDER["deepseek"])
+        eval_model = st.selectbox(
+            t("model"),
+            options=eval_models,
+            index=_model_index(eval_models, "eval_model", eval_models[0]),
+            key="sidebar_eval_model",
+        )
+        st.session_state.eval_model = eval_model
 
         st.divider()
         st.caption(t("data_template"))
@@ -228,7 +343,8 @@ def render_phase_config():
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         if st.button(t("next_generate_prompt"), type="primary", width="stretch"):
-            if not st.session_state.api_key.strip():
+            prompt_gen_key = get_api_key_for_provider(st.session_state.prompt_gen_provider)
+            if not prompt_gen_key:
                 st.error(t("err_fill_api_key"))
             elif not st.session_state.scenario.strip() or not st.session_state.north_star.strip():
                 st.error(t("err_fill_scenario"))
@@ -240,7 +356,9 @@ def render_phase_config():
                         st.session_state.generation_prompt = generate_generation_prompt_in_app(
                             st.session_state.scenario,
                             st.session_state.north_star,
-                            st.session_state.api_key,
+                            st.session_state.prompt_gen_provider,
+                            st.session_state.prompt_gen_model,
+                            prompt_gen_key,
                         )
                         st.session_state.phase = "GENERATION_PROMPT_EDIT"
                         st.rerun()
@@ -256,7 +374,8 @@ def render_phase_config():
             )
         )
         if st.button(t("has_answer_btn"), width="stretch", disabled=not has_answer):
-            if not st.session_state.api_key.strip():
+            prompt_gen_key = get_api_key_for_provider(st.session_state.prompt_gen_provider)
+            if not prompt_gen_key:
                 st.error(t("err_fill_api_key"))
             elif not st.session_state.scenario.strip() or not st.session_state.north_star.strip():
                 st.error(t("err_fill_scenario"))
@@ -266,7 +385,9 @@ def render_phase_config():
                         prompt = generate_evaluator_prompt_in_app(
                             st.session_state.scenario,
                             st.session_state.north_star,
-                            st.session_state.api_key,
+                            st.session_state.prompt_gen_provider,
+                            st.session_state.prompt_gen_model,
+                            prompt_gen_key,
                         )
                         st.session_state.generated_prompt = prompt
                         st.session_state.evaluation_prompt = prompt
@@ -296,12 +417,18 @@ def render_phase_generation_prompt_edit():
         if not (st.session_state.generation_prompt or "").strip():
             st.error(t("err_fill_business_prompt"))
             return
+        prompt_gen_key = get_api_key_for_provider(st.session_state.prompt_gen_provider)
+        if not prompt_gen_key:
+            st.error(t("err_fill_api_key"))
+            return
         with st.spinner("Generating evaluator prompt…"):
             try:
                 prompt = generate_evaluator_prompt_in_app(
                     st.session_state.scenario,
                     st.session_state.north_star,
-                    st.session_state.api_key,
+                    st.session_state.prompt_gen_provider,
+                    st.session_state.prompt_gen_model,
+                    prompt_gen_key,
                 )
                 st.session_state.generated_prompt = prompt
                 st.session_state.evaluation_prompt = prompt
@@ -323,8 +450,9 @@ def render_phase_generating():
 
     df = st.session_state.uploaded_df
     n = len(df) if df is not None else 0
-    api_key = st.session_state.api_key
-    model = st.session_state.model
+    provider = st.session_state.gen_provider
+    api_key = get_api_key_for_provider(provider)
+    model = st.session_state.gen_model
     generation_prompt = (st.session_state.generation_prompt or "").strip()
 
     if not api_key or df is None or n == 0:
@@ -366,7 +494,7 @@ def render_phase_generating():
     progress_bar = st.progress(0.0, text=t("progress_preparing"))
     status = st.status(t("status_generating"), expanded=True)
 
-    api_cfg = (get_config().get("api") or {}).get("deepseek") or {}
+    api_cfg = (get_config().get("api") or {}).get(provider) or {}
     with status:
         for i, (idx, row) in enumerate(df.iterrows()):
             progress_bar.progress((i + 1) / n, text=f"{i+1}/{n}")
@@ -381,6 +509,7 @@ def render_phase_generating():
                 generation_prompt,
                 api_key,
                 model,
+                provider=provider,
                 temperature=api_cfg.get("temperature", 0.7),
                 max_tokens=api_cfg.get("max_tokens", 4000),
             )
@@ -454,8 +583,9 @@ def render_phase_evaluating():
 
     df = st.session_state.uploaded_df
     n = len(df) if df is not None else 0
-    api_key = st.session_state.api_key
-    model = st.session_state.model
+    provider = st.session_state.eval_provider
+    api_key = get_api_key_for_provider(provider)
+    model = st.session_state.eval_model
     evaluation_prompt = st.session_state.evaluation_prompt
 
     if not api_key:
@@ -484,7 +614,9 @@ def render_phase_evaluating():
             progress_bar.progress((i + 1) / n, text=f"Evaluating {i+1}/{n}…")
             st.write(f"[{i+1}/{n}] {str(row.get('question', ''))[:50]}…")
 
-            result, err = run_single_evaluation(row, evaluation_prompt, api_key, model)
+            result, err = run_single_evaluation(
+                row, evaluation_prompt, api_key, model, provider=provider
+            )
             if err:
                 df.at[idx, "decision"] = "ERROR"
                 df.at[idx, "reason"] = f"error: {err}"

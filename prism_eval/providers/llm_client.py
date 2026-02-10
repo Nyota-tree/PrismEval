@@ -1,5 +1,5 @@
 """
-Unified LLM client supporting OpenAI, Anthropic, and DeepSeek.
+Unified LLM client supporting OpenAI, Anthropic, DeepSeek, and Gemini.
 
 Uses configuration from configs/default.yaml (or legacy config.py) and
 environment variables for API keys.
@@ -13,6 +13,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Env var name per provider (for callers to set before creating client)
+PROVIDER_ENV_KEYS = {
+    "openai": "OPENAI_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "gemini": "GOOGLE_API_KEY",
+}
+
 try:
     from openai import OpenAI
 except ImportError:
@@ -22,6 +30,13 @@ try:
     from anthropic import Anthropic
 except ImportError:
     Anthropic = None
+
+try:
+    import google.generativeai as genai
+    _HAS_GEMINI = True
+except ImportError:
+    genai = None
+    _HAS_GEMINI = False
 
 # Prefer new config; fallback to legacy config module
 try:
@@ -68,6 +83,12 @@ def _get_api_config(provider: str) -> dict:
                 "max_tokens": getattr(legacy, "DEEPSEEK_REASONER_MAX_TOKENS", 2000),
             },
         }
+    if provider == "gemini":
+        return {
+            "model": getattr(legacy, "GEMINI_MODEL", "gemini-1.5-flash"),
+            "temperature": getattr(legacy, "GEMINI_TEMPERATURE", 0.7),
+            "max_tokens": getattr(legacy, "GEMINI_MAX_TOKENS", 2000),
+        }
     return {}
 
 
@@ -105,7 +126,7 @@ class LLMClient:
         Initialize the LLM client.
 
         Args:
-            provider: One of "openai", "anthropic", "deepseek". If None, uses
+            provider: One of "openai", "anthropic", "deepseek", "gemini". If None, uses
                 evaluator provider from config, then default provider.
             model: Model name. If None, uses config default for the provider.
             temperature: Sampling temperature. If None, uses config default.
@@ -173,10 +194,26 @@ class LLMClient:
                 self._max_tokens = cfg.get("max_tokens", 4000)
             self._top_p = top_p if top_p is not None else cfg.get("reasoner", {}).get("top_p")
 
+        elif self._provider == "gemini":
+            if not _HAS_GEMINI:
+                raise ImportError(
+                    "Package 'google-generativeai' is not installed. Run: pip install google-generativeai"
+                )
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                raise ValueError("GOOGLE_API_KEY not set. Set it in .env or environment.")
+            genai.configure(api_key=api_key)
+            cfg = _get_api_config("gemini")
+            self._model = model or cfg.get("model", "gemini-1.5-flash")
+            self._temperature = temperature if temperature is not None else cfg.get("temperature", 0.7)
+            self._max_tokens = max_tokens or cfg.get("max_tokens", 2000)
+            self._top_p = None
+            self._client = genai.GenerativeModel(self._model)
+
         else:
             raise ValueError(
                 f"Unsupported API provider: {self._provider}. "
-                "Use 'openai', 'anthropic', or 'deepseek'."
+                "Use 'openai', 'anthropic', 'deepseek', or 'gemini'."
             )
 
     def _call_api(self, system_prompt: str, user_prompt: str) -> str:
@@ -204,6 +241,18 @@ class LLMClient:
                 messages=[{"role": "user", "content": user_prompt}],
             )
             return response.content[0].text.strip()
+        elif self._provider == "gemini":
+            combined = f"{system_prompt}\n\n{user_prompt}" if system_prompt else user_prompt
+            response = self._client.generate_content(
+                combined,
+                generation_config=genai.GenerationConfig(
+                    temperature=self._temperature,
+                    max_output_tokens=self._max_tokens,
+                ),
+            )
+            if not response.text:
+                raise RuntimeError("Gemini returned empty response")
+            return response.text.strip()
         else:
             raise RuntimeError(f"Unknown provider: {self._provider}")
 

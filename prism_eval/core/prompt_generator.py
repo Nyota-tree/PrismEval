@@ -6,6 +6,7 @@ an evaluation prompt that can be used in batch_evaluate or the Streamlit app.
 from typing import Optional
 
 from prism_eval.providers import LLMClient
+from prism_eval.providers.llm_client import PROVIDER_ENV_KEYS
 
 
 # System prompt used to generate the evaluator prompt (English).
@@ -87,12 +88,14 @@ def generate_evaluator_prompt(
         The generated evaluator prompt string.
     """
     import os
+    prov = (provider or "deepseek").lower()
+    env_key = PROVIDER_ENV_KEYS.get(prov, "DEEPSEEK_API_KEY")
     prev = None
     if api_key is not None:
-        prev = os.environ.get("DEEPSEEK_API_KEY")
-        os.environ["DEEPSEEK_API_KEY"] = api_key
+        prev = os.environ.get(env_key)
+        os.environ[env_key] = api_key
     try:
-        client = LLMClient(provider=provider or "deepseek", model=model)
+        client = LLMClient(provider=prov, model=model)
         user_prompt = f"""Scenario: {scenario}
 North Star metric: {north_star_metric}
 
@@ -100,6 +103,6 @@ Generate the full Evaluator Prompt based on the above."""
         return client.generate(system_prompt=PROMPT_GENERATOR_SYSTEM_PROMPT, user_prompt=user_prompt)
     finally:
         if prev is not None:
-            os.environ["DEEPSEEK_API_KEY"] = prev
+            os.environ[env_key] = prev
         elif api_key is not None:
-            os.environ.pop("DEEPSEEK_API_KEY", None)
+            os.environ.pop(env_key, None)

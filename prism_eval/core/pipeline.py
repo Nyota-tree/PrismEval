@@ -9,6 +9,7 @@ import pandas as pd
 
 from prism_eval.metrics.extractor import extract_evaluation, extract_json_from_text
 from prism_eval.providers import LLMClient
+from prism_eval.providers.llm_client import PROVIDER_ENV_KEYS
 
 
 def fill_evaluation_prompt(
@@ -62,9 +63,10 @@ def run_single_generation(
         return None, "Generation prompt is empty."
 
     import os
-    prev = os.environ.get("DEEPSEEK_API_KEY")
+    env_key = PROVIDER_ENV_KEYS.get((provider or "deepseek").lower(), "DEEPSEEK_API_KEY")
+    prev = os.environ.get(env_key)
     try:
-        os.environ["DEEPSEEK_API_KEY"] = api_key
+        os.environ[env_key] = api_key
         client = LLMClient(
             provider=provider,
             model=model,
@@ -80,9 +82,9 @@ def run_single_generation(
         return None, str(e)
     finally:
         if prev is not None:
-            os.environ["DEEPSEEK_API_KEY"] = prev
+            os.environ[env_key] = prev
         else:
-            os.environ.pop("DEEPSEEK_API_KEY", None)
+            os.environ.pop(env_key, None)
 
 
 def run_single_evaluation(
@@ -132,9 +134,10 @@ def run_single_evaluation(
     except Exception:
         eval_temperature = 0.0
         eval_max_tokens = 2000
-    prev_key = os.environ.get("DEEPSEEK_API_KEY")
+    env_key = PROVIDER_ENV_KEYS.get((provider or "deepseek").lower(), "DEEPSEEK_API_KEY")
+    prev_key = os.environ.get(env_key)
     try:
-        os.environ["DEEPSEEK_API_KEY"] = api_key
+        os.environ[env_key] = api_key
         client = LLMClient(
             provider=provider,
             model=model,
@@ -146,9 +149,9 @@ def run_single_evaluation(
         return None, str(e)
     finally:
         if prev_key is not None:
-            os.environ["DEEPSEEK_API_KEY"] = prev_key
+            os.environ[env_key] = prev_key
         else:
-            os.environ.pop("DEEPSEEK_API_KEY", None)
+            os.environ.pop(env_key, None)
 
     json_obj = extract_json_from_text(response)
     if json_obj is None:
