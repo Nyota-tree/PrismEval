@@ -1,75 +1,114 @@
-💎 PrismEval: The Multi-Dimensional LLM Evaluation Spectrum
-Stop the "Vibe Checks." Start Engineering Trust. > Refracting complex LLM outputs into a spectrum of actionable, high-precision metrics for production-grade AI Agents.
+# 💎 PrismEval
 
-🌪 The Problem: The "Black Box" of LLM Reliability
-In the journey from Prompt Engineering to Production, teams often face the "Evaluation Gap":
+**Refracting complex LLM outputs into a spectrum of actionable, high-precision metrics for production-grade AI agents.**
 
-Vibe-based Iteration: "It feels better" is not a metric.
+Stop the "vibe checks." Start engineering trust.
 
-Opaque Failures: Knowing a model failed is easy; knowing why (faithfulness vs. relevance vs. logic) is hard.
+---
 
-The Cost of Hallucinations: Manual review doesn't scale, and un-gated deployments are a liability.
+## 🌪 The Problem: The "Black Box" of LLM Reliability
 
-🌈 The Solution: PrismEval
-PrismEval acts as a prism for your LLM outputs. It deconstructs a single response into a Multi-dimensional Spectrum of quantitative wavelengths, allowing for automated decision-making and surgical prompt optimization.
+In the journey from prompt engineering to production, teams often hit an **evaluation gap**:
 
-Core "Wavelengths" (Metrics)
-Faithfulness (The Truth): Detects hallucinations by cross-referencing source context.
+- **Vibe-based iteration** — "It feels better" is not a metric.
+- **Opaque failures** — Knowing a model failed is easy; knowing *why* (faithfulness vs. relevance vs. logic) is hard.
+- **The cost of hallucinations** — Manual review doesn't scale; un-gated deployments are a liability.
 
-Instruction Adherence (The Logic): Measures how strictly the model followed complex system prompts.
+---
 
-Contextual Relevance (The Focus): Evaluates if the output directly addresses the user intent.
+## 🌈 The Solution: PrismEval
 
-Interaction Fluidity (The UX): A unique metric inspired by Interaction Design to measure the "naturalness" of the agent's persona.
+PrismEval acts as a **prism** for your LLM outputs: it splits a single response into a **multi-dimensional spectrum** of quantitative metrics, so you can automate decisions and optimize prompts with precision.
 
-🛠 Features
-1. Automated Decision Gating
-PrismEval doesn't just score; it decides. Based on your thresholds, it triggers a tri-state governance flow:
+### Core "Wavelengths" (Metrics)
 
-✅ PUBLISH: Meets high-quality benchmarks.
+| Metric | What it measures |
+|--------|-------------------|
+| **Faithfulness** | Detects hallucinations by cross-referencing source context. |
+| **Instruction Adherence** | How strictly the model followed system prompts. |
+| **Contextual Relevance** | Whether the output directly addresses user intent. |
+| **Interaction Fluidity** | Naturalness of the agent's persona (UX-inspired). |
 
-⚠️ REVIEW: Potential issues; flags for human-in-the-loop (HITL) audit.
+---
 
-❌ REJECT: Critical failure (e.g., Factuality < 5/10).
+## 🛠 Features
 
-2. North-Star Metric Customization
-Using our generate_evaluator_prompt.py, PMs can define a "North Star" (e.g., "Extreme Empathy" or "Strict JSON Schema") and the system automatically recalibrates the evaluation weights.
+### 1. Automated Decision Gating
 
-3. Developer-Centric DX
-Modular Architecture: Decoupled metrics, providers, and logic.
+PrismEval doesn’t just score — it **decides**. Based on your thresholds, it drives a tri-state flow:
 
-Self-Documenting CLI: Clean, structured terminal outputs for rapid debugging.
+- ✅ **PUBLISH** — Meets high-quality benchmarks.
+- ⚠️ **REVIEW** — Potential issues; flagged for human-in-the-loop (HITL) audit.
+- ❌ **REJECT** — Critical failure (e.g. factuality below threshold).
 
-Production-Ready: Standardized for CI/CD pipeline integration.
+### 2. North-Star Metric Customization
 
-🚀 Quick Start
-Bash
+Using `generate_evaluator_prompt` (or the Streamlit app), you define a **North Star** (e.g. "Extreme Empathy", "Strict JSON Schema"). The system then recalibrates evaluation weights automatically.
 
-# Clone the vision
+### 3. Developer-Centric DX
+
+- **Modular architecture** — Decoupled metrics, providers, and orchestration.
+- **Self-documenting CLI** — Clear, structured terminal output for debugging.
+- **Production-ready** — Fits into CI/CD and batch pipelines.
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# Clone the repo
 git clone https://github.com/Nyota-tree/PrismEval.git
 cd PrismEval
 
-# Setup environment
-cp .env.example .env  # Add your API keys
+# Install dependencies
+pip install -r requirements.txt
 
-# Run a batch evaluation
-python main.py --input data/samples.csv --output results/report.csv
-🏗 Architecture
-Designed with a focus on Observability and Separation of Concerns:
+# Configure API keys (copy template and fill in)
+cp .env.example .env
 
-Plaintext
+# Option A: Streamlit UI (recommended)
+streamlit run app.py
 
+# Option B: CLI — batch generate then evaluate
+python main.py generate examples/input_example.csv output.csv
+python main.py evaluate output.csv results.csv
+
+# Option C: Generate an evaluator prompt from scenario + North Star
+python main.py gen-prompt "Customer support replies" "Empathy and clarity" --output eval_prompt.txt
+```
+
+---
+
+## 🏗 Architecture
+
+```
 prism_eval/
-├── core/         # Orchestration & Gating Logic
-├── metrics/      # Multi-dimensional Wavelengths
-├── providers/    # LLM Connectors (OpenAI, Anthropic)
-└── utils/        # Engineering Helpers
-🔮 Future Roadmap: The "Kaleidoscope" Vision
-[ ] Visual Spectrum Dashboard: A UI to visualize evaluation drift over time.
+├── core/         # Orchestration, batch generate/evaluate, prompt generator
+├── metrics/      # Score extraction (faithfulness, north_star, completeness, etc.)
+├── providers/    # LLM connectors (OpenAI, Anthropic, DeepSeek)
+└── utils/        # Config loader, I/O, logging
+```
 
-[ ] Cross-Model Benchmarking: Instant comparison between GPT-4o, Claude 3.5, and Llama 3.
+Configuration: **`configs/config.yaml`** (model params, evaluation thresholds).  
+Prompts: **`configs/prompts.yaml`** or **`config.py`** (legacy).
 
-[ ] Real-time Feedback Loop: Auto-refine prompts based on failed evaluation scores.
+---
 
-📝 About the Author
-nyota佳树 AI Product Manager | Interaction Design Background Bridging the gap between human-centric design and machine-driven infrastructure.
+## 🔮 Roadmap
+
+- [ ] **Visual spectrum dashboard** — UI to track evaluation drift over time.
+- [ ] **Cross-model benchmarking** — Compare GPT-4o, Claude, DeepSeek side-by-side.
+- [ ] **Real-time feedback loop** — Auto-refine prompts from failed evaluation scores.
+
+---
+
+## 📄 License
+
+MIT. See [LICENSE](LICENSE).
+
+---
+
+## 📝 Author
+
+**nyota佳树** — AI Product Manager, interaction design background.  
+Bridging human-centric design and machine-driven infrastructure.
