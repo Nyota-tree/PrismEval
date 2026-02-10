@@ -1,0 +1,62 @@
+# PrismEval main configuration
+# Model parameters (Temperature, Max Tokens) and evaluation thresholds.
+# Override via environment variables (e.g. DEEPSEEK_API_KEY) or .env
+
+api:
+  default_provider: deepseek
+
+  openai:
+    model: gpt-4o-mini
+    temperature: 0.7
+    max_tokens: 2000
+
+  anthropic:
+    model: claude-3-5-sonnet-20241022
+    temperature: 0.7
+    max_tokens: 2000
+
+  deepseek:
+    base_url: "https://api.deepseek.com/v1"
+    model: deepseek-chat
+    temperature: 0.7
+    max_tokens: 4000
+    reasoner:
+      model: deepseek-reasoner
+      temperature: 0.0
+      top_p: 1.0
+      max_tokens: 2000
+
+batch:
+  max_workers: 5
+  max_retries: 3
+  retry_delay_seconds: 1
+
+columns:
+  input_text: input_text
+  output_column: model_response
+  model_response: model_response
+  final_content: final_content
+  question: question
+  expected_answer: expected_answer
+  generated_answer: generated_answer
+
+evaluator:
+  api_provider: deepseek
+  model: deepseek-reasoner
+  temperature: 0.0
+  max_tokens: 2000
+
+eval_output:
+  column_prefix: "score_"
+  reasoning_column: eval_reasoning
+
+# Evaluation decision thresholds
+evaluation:
+  # Factuality: reject if below threshold (0-10 scale)
+  factuality_threshold_0_10: 5
+  # Factuality: reject if below threshold (0-100 scale)
+  factuality_threshold_0_100: 50
+  # Publish if weighted_total_score >= this (0-100)
+  publish_threshold: 75
+  # For summary display: medium band (medium_min <= score < publish_threshold)
+  medium_min: 60
