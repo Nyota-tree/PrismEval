@@ -656,26 +656,31 @@ def render_phase_result():
 
     score_numeric = pd.to_numeric(df["weighted_total_score"], errors="coerce") if "weighted_total_score" in df.columns else pd.Series(dtype=float)
     valid = df[score_numeric.notna()]
-    n_valid = len(valid)
-    n_total = len(df)
+    n_valid = int(len(valid))
+    n_total = int(len(df))
 
     st.caption(t("core_metrics"))
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        avg_score = score_numeric.mean() if score_numeric.notna().any() else 0
+        avg_score = float(score_numeric.mean()) if score_numeric.notna().any() else 0.0
         st.metric(t("avg_score"), f"{avg_score:.1f}" if score_numeric.notna().any() else "—")
     with col2:
-        pass_count = valid["pass"].sum() if "pass" in valid.columns else (valid["decision"] == "PUBLISH").sum()
-        pass_rate = (pass_count / n_valid * 100) if n_valid else 0
+        if "pass" in valid.columns:
+            # Normalize pass column (bool, "True"/"False", 1/0) to countable
+            p = valid["pass"].replace({True: 1, False: 0, "True": 1, "False": 0, "true": 1, "false": 0}).fillna(0)
+            pass_count = int(pd.to_numeric(p, errors="coerce").fillna(0).sum())
+        else:
+            pass_count = int((valid["decision"] == "PUBLISH").sum())
+        pass_rate = (float(pass_count) / n_valid * 100) if n_valid else 0.0
         st.metric(t("pass_rate"), f"{pass_rate:.1f}%" if n_valid else "—")
     with col3:
-        err_count = (df["decision"] == "ERROR").sum()
-        st.metric(t("error_count"), int(err_count))
+        err_count = int((df["decision"] == "ERROR").sum())
+        st.metric(t("error_count"), err_count)
     with col4:
         st.metric(t("total_count"), n_total)
     with col5:
         elapsed = st.session_state.get("eval_elapsed")
-        st.metric(t("elapsed"), f"{elapsed:.1f} s" if elapsed is not None else "—")
+        st.metric(t("elapsed"), f"{float(elapsed):.1f} s" if elapsed is not None else "—")
 
     st.divider()
 
