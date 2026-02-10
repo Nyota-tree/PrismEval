@@ -78,7 +78,7 @@ def init_session_state() -> None:
     if "phase" not in st.session_state:
         st.session_state.phase = "CONFIG"
     if "lang" not in st.session_state:
-        st.session_state.lang = "zh"
+        st.session_state.lang = "en"
     if "api_key" not in st.session_state:
         st.session_state.api_key = ""
     if "model" not in st.session_state:
@@ -132,9 +132,9 @@ def render_sidebar():
 
         lang = st.selectbox(
             t("language"),
-            options=["zh", "en"],
-            format_func=lambda x: "中文" if x == "zh" else "English",
-            index=0 if st.session_state.get("lang", "zh") == "zh" else 1,
+            options=["en", "zh"],
+            format_func=lambda x: "English" if x == "en" else "中文",
+            index=0 if st.session_state.get("lang", "en") == "en" else 1,
         )
         st.session_state.lang = lang
 
