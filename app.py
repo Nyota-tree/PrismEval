@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import plotly.graph_objects as go
 
 from prism_eval.providers import LLMClient, PROVIDER_ENV_KEYS
 from prism_eval.metrics.extractor import extract_json_from_text, extract_evaluation
@@ -671,12 +672,14 @@ def render_phase_result():
         avg_score = float(score_numeric.mean()) if score_numeric.notna().any() else 0.0
         st.metric(t("avg_score"), f"{avg_score:.1f}" if score_numeric.notna().any() else "—")
     with col2:
-        if "pass" in valid.columns:
-            # Normalize pass column (bool, "True"/"False", 1/0) to countable
+        # Pass rate = PUBLISH count (decision column); matches what the table shows
+        if "decision" in valid.columns:
+            pass_count = int((valid["decision"].astype(str).str.upper() == "PUBLISH").sum())
+        elif "pass" in valid.columns:
             p = valid["pass"].replace({True: 1, False: 0, "True": 1, "False": 0, "true": 1, "false": 0}).fillna(0)
             pass_count = int(pd.to_numeric(p, errors="coerce").fillna(0).sum())
         else:
-            pass_count = int((valid["decision"] == "PUBLISH").sum())
+            pass_count = 0
         pass_rate = (float(pass_count) / n_valid * 100) if n_valid else 0.0
         st.metric(t("pass_rate"), f"{pass_rate:.1f}%" if n_valid else "—")
     with col3:
@@ -708,6 +711,37 @@ def render_phase_result():
                     st.caption(t("expander_diff_caption"))
         else:
             st.caption(t("no_valid_scores"))
+
+    # Radar charts: dimension scores
+    radar_cols = ["factuality_score", "north_star_score", "completeness_score"]
+    radar_labels = [t("col_factuality"), t("col_north_star"), t("col_completeness")]
+    has_radar_cols = all(c in df.columns for c in radar_cols)
+    if has_radar_cols and n_valid > 0:
+        st.divider()
+        st.caption(t("radar_avg_title"))
+        avg_f = pd.to_numeric(valid["factuality_score"], errors="coerce").fillna(0).mean()
+        avg_n = pd.to_numeric(valid["north_star_score"], errors="coerce").fillna(0).mean()
+        avg_c = pd.to_numeric(valid["completeness_score"], errors="coerce").fillna(0).mean()
+        r_avg = [avg_f, avg_n, avg_c, avg_f]
+        theta_avg = radar_labels + [radar_labels[0]]
+        fig_radar_avg = go.Figure(data=go.Scatterpolar(r=r_avg, theta=theta_avg, fill="toself", name=t("avg_score")))
+        fig_radar_avg.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=False, margin=dict(t=40))
+        st.plotly_chart(fig_radar_avg, use_container_width=True)
+
+        st.caption(t("radar_per_answer_title"))
+        options = list(valid.index)
+        if options:
+            labels_for_select = [f"{i+1}. {(str(valid.loc[idx, 'question'])[:40])}…" if len(str(valid.loc[idx, "question"])) > 40 else f"{i+1}. {valid.loc[idx, 'question']}" for i, idx in enumerate(options)]
+            choice_idx = st.selectbox(t("radar_select_answer"), range(len(options)), format_func=lambda i: labels_for_select[i], key="radar_select_answer")
+            row_idx = options[choice_idx]
+            row = valid.loc[row_idx]
+            r1 = [float(pd.to_numeric(row.get(c), errors="coerce") or 0) for c in radar_cols]
+            r1.append(r1[0])
+            theta1 = radar_labels + [radar_labels[0]]
+            fig_radar_one = go.Figure(data=go.Scatterpolar(r=r1, theta=theta1, fill="toself", name=""))
+            fig_radar_one.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=False, margin=dict(t=40))
+            st.plotly_chart(fig_radar_one, use_container_width=True)
+
     st.divider()
 
     st.caption(t("prompts_section"))
