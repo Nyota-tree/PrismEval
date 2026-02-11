@@ -133,9 +133,6 @@ def apply_mobile_optimization() -> None:
                 max-width: 100% !important;
                 height: auto !important;
             }
-            header {
-                visibility: hidden;
-            }
         }
         </style>
     """, unsafe_allow_html=True)
