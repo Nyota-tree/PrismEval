@@ -560,8 +560,13 @@ def render_phase_prompt_edit():
     )
     st.session_state.evaluation_prompt = evaluation_prompt
 
-    if "{original_text}" not in evaluation_prompt or "{model_output}" not in evaluation_prompt:
-        st.warning(t("placeholder_warning"))
+    has_question_placeholder = "{original_text}" in evaluation_prompt or "{original_input}" in evaluation_prompt
+    has_model_output_placeholder = "{model_output}" in evaluation_prompt
+    if not (has_question_placeholder and has_model_output_placeholder):
+        st.warning("**Missing required placeholders**")
+        st.caption(t("placeholder_missing_what_happens"))
+        st.caption(t("placeholder_missing_how_to_fix"))
+        st.code(t("placeholder_missing_example"), language=None)
 
     st.divider()
     if st.button(t("confirm_start"), type="primary", width="content"):

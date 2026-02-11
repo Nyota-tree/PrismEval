@@ -1,0 +1,15 @@
+[theme]
+# Primary brand color (electric cyan from logo) for buttons and accents
+primaryColor = "#00D2FF"
+
+# Main background: pure white for a clean look
+backgroundColor = "#FFFFFF"
+
+# Secondary background: light cool grey for sidebar and inputs, adds depth
+secondaryBackgroundColor = "#F0F5F9"
+
+# Body text: dark slate grey, softer than black for a refined feel
+textColor = "#1E293B"
+
+# Font: system default sans serif
+font = "sans serif"

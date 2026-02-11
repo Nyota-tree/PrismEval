@@ -20,6 +20,7 @@ def fill_evaluation_prompt(
     """
     Replace {original_text} and {model_output} placeholders in the template.
 
+    Also replaces {original_input} (common in LLM-generated prompts) with original_text.
     Uses str.replace to avoid JSON/markdown curly braces being interpreted by .format().
 
     Args:
@@ -30,7 +31,10 @@ def fill_evaluation_prompt(
     Returns:
         Filled prompt string.
     """
-    return prompt_template.replace("{original_text}", original_text).replace("{model_output}", model_output)
+    out = prompt_template.replace("{original_text}", original_text).replace("{model_output}", model_output)
+    # Support {original_input} as synonym (some generated prompts use this)
+    out = out.replace("{original_input}", original_text)
+    return out
 
 
 def run_single_generation(
@@ -124,6 +128,11 @@ def run_single_evaluation(
         return None, "No answer content (add generated_answer or expected_answer); row skipped."
 
     prompt_filled = fill_evaluation_prompt(evaluation_prompt, original_text, model_output)
+    if "{original_text}" in prompt_filled or "{model_output}" in prompt_filled or "{original_input}" in prompt_filled:
+        return None, (
+            "Evaluation prompt template is missing placeholder substitution: "
+            "ensure it contains {original_text} and {model_output} (or {original_input}) so the system can fill question and answer."
+        )
 
     import os
     try:

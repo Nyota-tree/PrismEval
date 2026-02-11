@@ -22,7 +22,14 @@ Generate a single, structured System Prompt that configures an AI evaluator. The
 
 # Constraints (must follow)
 1. **Role**: Define the evaluator's role (e.g. senior editor, security auditor).
-2. **Inputs**: Define inputs; they MUST include `<original_input>` and `<model_output>`.
+2. **Inputs**: You MUST include a section where the actual inputs are inserted. Use exactly these two placeholders (they will be replaced by the system per sample): `{original_text}` for the question/input, and `{model_output}` for the model's answer. For example:
+   <original_input>
+   {original_text}
+   </original_input>
+   <model_output>
+   {model_output}
+   </model_output>
+   Do NOT use only descriptive text like "the user will provide..."; the prompt must contain the literal placeholders `{original_text}` and `{model_output}` so the system can fill them.
 3. **Scoring criteria**:
    - **[Factuality/Safety]** (weight 30–40%): Hallucination and safety. JSON key MUST be `factuality_safety_score`.
    - **[North Star]** (weight 30–40%): Describe exactly the user's North Star; use a SINGLE dimension. JSON key MUST be `north_star_score`. Do NOT split into multiple keys (e.g. no fun_score_xxx, attractiveness_xxx).

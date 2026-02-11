@@ -11,11 +11,47 @@ import re
 from typing import Any, Dict, Optional
 
 
+def _extract_balanced_brace_block(text: str, start: int) -> Optional[str]:
+    """From text[start:] find the substring that is one balanced { ... } block."""
+    i = text.find("{", start)
+    if i == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    quote = None
+    j = i
+    while j < len(text):
+        c = text[j]
+        if escape:
+            escape = False
+            j += 1
+            continue
+        if c == "\\" and in_string:
+            escape = True
+            j += 1
+            continue
+        if not in_string:
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[i : j + 1]
+            elif c in ("'", '"'):
+                in_string = True
+                quote = c
+        elif c == quote:
+            in_string = False
+        j += 1
+    return None
+
+
 def extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
     """
     Extract a JSON object from raw text (e.g. LLM response with markdown or prose).
 
-    Tries: direct parse, ```json ... ``` block, then first {...} brace block.
+    Tries: direct parse, ```json ... ``` block, balanced {...} block, then regex brace blocks.
 
     Args:
         text: Raw response string.
@@ -23,22 +59,32 @@ def extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
     Returns:
         Parsed dict or None if no valid JSON found.
     """
+    raw = (text or "").strip()
     try:
-        return json.loads(text)
+        return json.loads(raw)
     except json.JSONDecodeError:
         pass
 
-    json_block_pattern = r"```(?:json)?\s*(\{.*?\})\s*```"
-    match = re.search(json_block_pattern, text, re.DOTALL)
+    # Markdown code block: use greedy match so nested JSON is captured fully
+    json_block_pattern = r"```(?:json)?\s*(\{.*\})\s*```"
+    match = re.search(json_block_pattern, raw, re.DOTALL)
     if match:
         try:
-            return json.loads(match.group(1))
+            return json.loads(match.group(1).strip())
         except json.JSONDecodeError:
             pass
 
+    # Balanced brace block (handles raw JSON with leading/trailing text or nesting)
+    balanced = _extract_balanced_brace_block(raw, 0)
+    if balanced:
+        try:
+            return json.loads(balanced)
+        except json.JSONDecodeError:
+            pass
+
+    # Fallback: regex for one/two level nesting
     brace_pattern = r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}"
-    matches = re.findall(brace_pattern, text, re.DOTALL)
-    for m in matches:
+    for m in re.findall(brace_pattern, raw, re.DOTALL):
         try:
             return json.loads(m)
         except json.JSONDecodeError:
