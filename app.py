@@ -767,7 +767,7 @@ def main():
 
     banner = _banner_path()
     if banner:
-        st.image(banner, use_container_width=True)
+        st.image(banner, width=420)
     else:
         st.title("📊 " + t("app_title"))
     st.caption(t("breadcrumb"))
