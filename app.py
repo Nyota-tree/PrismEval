@@ -22,7 +22,7 @@ from prism_eval.core.prompt_generator import (
     generate_evaluator_prompt,
 )
 from prism_eval.utils.config_loader import get_config
-from i18n import t
+from prism_eval.utils.i18n import t
 
 # Provider display name -> internal value
 PROVIDERS = [

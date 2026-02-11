@@ -34,7 +34,7 @@ TEXTS = {
         "scenario_help": "More detail helps the model produce a better prompt.",
         "north_star_label": "North star metric",
         "north_star_placeholder": "e.g. helpfulness, safety, professionalism, creativity",
-        "north_star_help": "The main criteria for “good” outputs. You can list several.",
+        "north_star_help": "The main criteria for \"good\" outputs. You can list several.",
         "upload_csv": "Upload CSV (evaluation data)",
         "upload_help": "Required: a 'question' column. Optional: 'expected_answer' to skip answer generation.",
         "preview": "Preview (first 3 rows)",

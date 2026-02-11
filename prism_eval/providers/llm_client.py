@@ -57,7 +57,7 @@ def _get_api_config(provider: str) -> dict:
             pass
         return prov
     # Legacy config
-    import config as legacy
+    from prism_eval import config as legacy
     if provider == "openai":
         return {
             "model": getattr(legacy, "OPENAI_MODEL", "gpt-4o-mini"),
@@ -100,7 +100,7 @@ def _get_batch_config() -> dict:
             "max_retries": batch.get("max_retries", 3),
             "retry_delay": batch.get("retry_delay_seconds", 1),
         }
-    import config as legacy
+    from prism_eval import config as legacy
     return {
         "max_retries": getattr(legacy, "MAX_RETRIES", 3),
         "retry_delay": getattr(legacy, "RETRY_DELAY", 1),
@@ -140,7 +140,7 @@ class LLMClient:
                 eval_cfg = get_config().get("evaluator") or {}
                 self._provider = (eval_cfg.get("api_provider") or get("api.default_provider") or "deepseek").lower()
             else:
-                import config as legacy
+                from prism_eval import config as legacy
                 self._provider = (
                     getattr(legacy, "EVALUATOR_API_PROVIDER", None) or getattr(legacy, "API_PROVIDER", "deepseek")
                 ).lower()
