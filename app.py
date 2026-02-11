@@ -83,7 +83,7 @@ def generate_generation_prompt_in_app(
 
 # Page config
 st.set_page_config(
-    page_title="LLM Eval Pipeline",
+    page_title="PrismEval",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
