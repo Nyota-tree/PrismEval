@@ -7,6 +7,7 @@ Six phases: Config → Business Prompt → Eval Prompt → Generate Answers → 
 import io
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import pandas as pd
@@ -753,12 +754,22 @@ def render_phase_result():
     )
 
 
+# Banner path (project static folder)
+def _banner_path() -> Optional[str]:
+    p = Path(__file__).resolve().parent / "static" / "banner.png"
+    return str(p) if p.exists() else None
+
+
 # Main
 def main():
     init_session_state()
     render_sidebar()
 
-    st.title("📊 " + t("app_title"))
+    banner = _banner_path()
+    if banner:
+        st.image(banner, use_container_width=True)
+    else:
+        st.title("📊 " + t("app_title"))
     st.caption(t("breadcrumb"))
     st.divider()
 
