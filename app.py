@@ -90,6 +90,39 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
+def apply_mobile_optimization() -> None:
+    """Inject CSS for mobile viewport: scrollable tables, sidebar drawer, tighter padding, banner scaling."""
+    st.markdown("""
+        <style>
+        @media (max-width: 768px) {
+            div[data-testid="stDataFrame"], .stTable {
+                width: 100% !important;
+                overflow-x: auto !important;
+            }
+            section[data-testid="stSidebar"] {
+                width: 80vw !important;
+                box-shadow: 5px 0px 15px rgba(0,0,0,0.1);
+            }
+            .main .block-container {
+                padding-top: 1.5rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+            }
+            [data-testid="stImage"] img {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            header {
+                visibility: hidden;
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+
+apply_mobile_optimization()
+
 # Constants
 REQUIRED_CSV_COLUMNS = ["question"]
 OPTIONAL_ANSWER_COLUMN = "expected_answer"
