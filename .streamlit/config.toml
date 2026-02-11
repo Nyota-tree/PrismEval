@@ -1,6 +1,6 @@
 [theme]
-# Primary brand color (electric cyan from logo) for buttons and accents
-primaryColor = "#00D2FF"
+# Primary brand color: muted cyan, lower saturation but still distinct from background
+primaryColor = "#2B9EB8"
 
 # Main background: pure white for a clean look
 backgroundColor = "#FFFFFF"
