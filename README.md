@@ -1,80 +1,147 @@
 # 💎 PrismEval
 
-**Refracting complex LLM outputs into a spectrum of actionable, high-precision metrics for production-grade AI agents.**
+> **Refracting complex LLM outputs into a spectrum of actionable, high-precision metrics.**
 
-Stop the "vibe checks." Start engineering trust.
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://prismeval.streamlit.app/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
+[![DeveloperWeek 2026](https://img.shields.io/badge/DeveloperWeek-2026_Hackathon-purple?style=for-the-badge)](https://developerweek-2026-hackathon.devpost.com/)
+
+**Stop the "vibe checks." Start engineering trust.**
+
+Most AI teams iterate prompts by gut feeling — _"it feels better"_ is not a metric. PrismEval brings **quantitative rigor** to prompt evaluation, so you know exactly _what_ improved, _by how much_, and _where things regressed_.
+
+### Screenshots & Demo
+
+**1. Step 1 — Scenario & data**  
+Configure language and API keys (OpenAI, DeepSeek, Anthropic, Gemini) in the sidebar, then describe your business scenario. The more context you provide, the better the generated prompts.
+
+![Step 1: Scenario and API keys](docs/images/1.png)
+
+**2. Upload data and define your north star**  
+Enter your north star metric (e.g. helpfulness, safety, creativity), then upload a CSV with a `question` column. You can proceed to generate prompts or, if you already have answers, generate only the evaluation plan.
+
+![North star metric and CSV upload](docs/images/2.png)
+
+**3. Step 2 — Business prompt**  
+The app generates a business prompt from your scenario and north star. Edit it as needed, then generate the evaluation prompt.
+
+![Step 2: Editable business prompt](docs/images/4.png)
+
+**4. Step 3 — Evaluation prompt**  
+Review and edit the evaluation prompt (scoring criteria, weights, and output format). When ready, confirm to generate answers and run evaluation.
+
+![Step 3: Evaluation prompt and scoring criteria](docs/images/5.png)
+
+**5. Step 6 — Results and radar charts**  
+View core metrics, score distribution, and radar charts: average scores across dimensions (prompt overall performance) and per-answer dimension scores (Factuality/Safety, North star, Completeness & Coherence).
+
+![Step 6: Results with radar charts](docs/images/10.png)
 
 ---
 
-## 🌪 The Problem: The "Black Box" of LLM Reliability
+## 🎯 The Problem
 
-In the journey from prompt engineering to production, teams often hit an **evaluation gap**:
+In the journey from prompt engineering to production, teams hit an **evaluation gap**:
 
-- **Vibe-based iteration** — "It feels better" is not a metric.
-- **Opaque failures** — Knowing a model failed is easy; knowing *why* (faithfulness vs. relevance vs. logic) is hard.
-- **The cost of hallucinations** — Manual review doesn't scale; un-gated deployments are a liability.
+- **"It feels better"** — but you can't measure "feel" at scale.
+- **Opaque failures** — knowing _something_ broke is easy; knowing whether it's faithfulness, relevance, or coherence is hard.
+- **Regression blindness** — a prompt tweak that fixes 3 cases may silently break 30 others.
+
+This problem is **acute** in batch content scenarios: AI-generated reports, UGC moderation, customer support — anywhere you process hundreds or thousands of items daily.
+
+## 💡 The Solution
+
+PrismEval is a **lightweight evaluation pipeline** that uses LLM-as-a-Judge to split a single LLM response into a **multi-dimensional spectrum** of metrics — then makes automated publish/review/reject decisions.
+
+### How It Works
+
+```
+Natural Language Description (your scenario + north-star metric)
+    ↓  LLM understands & structures
+Auto-generated Business Prompt + Evaluation Prompt
+    ↓  LLM executes batch generation
+Batch Responses
+    ↓  LLM acts as Judge
+Multi-dimensional Scores + Automated Decisions
+```
+
+### Three Roles of AI in PrismEval
+
+| Role | What it does |
+|------|-------------|
+| **Prompt Architect** | Converts your natural language description into structured business + evaluation prompts |
+| **Content Generator** | Batch-generates responses with concurrent processing and auto-retry |
+| **Quality Judge** | Scores each output on multiple dimensions, outputs structured JSON with reasoning |
 
 ---
 
-## 🌈 The Solution: PrismEval
+## ✨ Key Features
 
-PrismEval acts as a **prism** for your LLM outputs: it splits a single response into a **multi-dimensional spectrum** of quantitative metrics, so you can automate decisions and optimize prompts with precision.
+### 🎛 Automated Decision Gating
+Every evaluated item gets a tri-state decision based on configurable thresholds:
+- ✅ **PUBLISH** — Weighted score ≥ 75: production-ready
+- ⚠️ **REVIEW** — Score < 75: flagged for human review
+- ❌ **REJECT** — Faithfulness < 5: hallucination risk, auto-blocked
 
-### Core "Wavelengths" (Metrics)
+### 🌟 North-Star Metric Customization
+Define your quality north star in plain language (e.g., "Extreme Empathy", "Strict Factual Accuracy", "Engaging Storytelling"). PrismEval auto-calibrates evaluation weights accordingly.
 
-| Metric | What it measures |
-|--------|-------------------|
-| **Faithfulness** | Detects hallucinations by cross-referencing source context. |
-| **Instruction Adherence** | How strictly the model followed system prompts. |
-| **Contextual Relevance** | Whether the output directly addresses user intent. |
-| **Interaction Fluidity** | Naturalness of the agent's persona (UX-inspired). |
+### 📊 Structured Scoring
+Every evaluation returns a machine-readable JSON:
+```json
+{
+  "determined_priority": "P0",
+  "scores": {
+    "factuality_safety_score": 9,
+    "north_star_score": 8,
+    "completeness_coherence_score": 9
+  },
+  "weighted_total_score": 87,
+  "decision": "PUBLISH",
+  "reasoning": "High factual accuracy with strong empathy..."
+}
+```
 
----
+### 🔌 Multi-Provider Support
+Seamlessly switch between **OpenAI**, **DeepSeek**, **Anthropic (Claude)**, and **Gemini** via a unified client; each role (prompt generation, answer generation, evaluation) can use a different provider and API key.
 
-## 🛠 Features
-
-### 1. Automated Decision Gating
-
-PrismEval doesn’t just score — it **decides**. Based on your thresholds, it drives a tri-state flow:
-
-- ✅ **PUBLISH** — Meets high-quality benchmarks.
-- ⚠️ **REVIEW** — Potential issues; flagged for human-in-the-loop (HITL) audit.
-- ❌ **REJECT** — Critical failure (e.g. factuality below threshold).
-
-### 2. North-Star Metric Customization
-
-Using `generate_evaluator_prompt` (or the Streamlit app), you define a **North Star** (e.g. "Extreme Empathy", "Strict JSON Schema"). The system then recalibrates evaluation weights automatically.
-
-### 3. Developer-Centric DX
-
-- **Modular architecture** — Decoupled metrics, providers, and orchestration.
-- **Self-documenting CLI** — Clear, structured terminal output for debugging.
-- **Production-ready** — Fits into CI/CD and batch pipelines.
+### 🛡 Production-Grade Reliability
+Thread pool concurrency (default 5), auto-retry (default 3 attempts), graceful failure marking — built for batch runs of hundreds or thousands of items.
 
 ---
 
 ## 🚀 Quick Start
 
+### Option A: Web UI (Recommended)
+
 ```bash
-# Clone the repo
 git clone https://github.com/Nyota-tree/PrismEval.git
 cd PrismEval
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Configure API keys (copy template and fill in)
-cp .env.example .env
-
-# Option A: Streamlit UI (recommended)
 streamlit run app.py
+```
 
-# Option B: CLI — batch generate then evaluate
+Or try the **[Live Demo →](https://prismeval.streamlit.app/)**
+
+### Option B: CLI
+
+```bash
+# Generate responses from a test CSV
 python main.py generate examples/input_example.csv output.csv
+
+# Evaluate the generated responses
 python main.py evaluate output.csv results.csv
 
-# Option C: Generate an evaluator prompt from scenario + North Star
+# Generate an evaluator prompt from scenario + North Star
 python main.py gen-prompt "Customer support replies" "Empathy and clarity" --output eval_prompt.txt
+```
+
+### Configuration
+
+```bash
+cp .env.example .env
+# Add your API key(s): OPENAI_API_KEY, DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY (Gemini)
 ```
 
 ---
@@ -83,32 +150,68 @@ python main.py gen-prompt "Customer support replies" "Empathy and clarity" --out
 
 ```
 prism_eval/
-├── core/         # Orchestration, batch generate/evaluate, prompt generator
-├── metrics/      # Score extraction (faithfulness, north_star, completeness, etc.)
-├── providers/    # LLM connectors (OpenAI, Anthropic, DeepSeek)
+├── core/         # Orchestration: batch generate, evaluate, prompt generation
+├── metrics/      # Score extraction: faithfulness, north_star, completeness
+├── providers/    # LLM connectors: OpenAI, DeepSeek, Anthropic, Gemini
 └── utils/        # Config loader, I/O, logging
-```
 
-Configuration: **`configs/config.yaml`** (model params, evaluation thresholds).  
-Prompts: **`configs/prompts.yaml`** or **`config.py`** (legacy).
+configs/          # Model params, evaluation thresholds (config.yaml)
+examples/         # Sample CSV data for quick testing
+tests/            # Test suite
+```
 
 ---
 
-## 🔮 Roadmap
+## 🤔 Why Not Just Use LangSmith / Braintrust / Humanloop?
 
-- [ ] **Visual spectrum dashboard** — UI to track evaluation drift over time.
-- [ ] **Cross-model benchmarking** — Compare GPT-4o, Claude, DeepSeek side-by-side.
-- [ ] **Real-time feedback loop** — Auto-refine prompts from failed evaluation scores.
+| | PrismEval | Enterprise Platforms |
+|---|---|---|
+| **Setup time** | 5 minutes | Hours to days |
+| **Target user** | PM, Ops, Solo Dev | Engineering teams |
+| **Input method** | Natural language | JSON schemas, code |
+| **Cost** | Free + your API costs | $99-999+/month |
+| **Deployment** | `streamlit run app.py` | SSO, RBAC, onboarding... |
+
+PrismEval fills the gap between "vibes" and enterprise platforms. It's the **eval tool you can actually start using today**.
+
+---
+
+## 🗺 Roadmap
+
+- [ ] **Visual Spectrum Dashboard** — Track evaluation drift across prompt versions over time
+- [ ] **A/B Prompt Comparison** — Side-by-side evaluation of two prompt variants on the same dataset
+- [ ] **Cross-Model Benchmarking** — Compare GPT-4o, Claude, DeepSeek outputs on identical inputs
+- [ ] **CI/CD Integration** — GitHub Action to auto-evaluate on every prompt change
+- [ ] **Real-time Feedback Loop** — Auto-suggest prompt refinements based on failure patterns
+
+---
+
+## 🛠 Built With
+
+- **Python 3.10+** — Core language
+- **Streamlit** — Web interface
+- **OpenAI SDK** — Unified LLM provider client (OpenAI-compatible protocol)
+- **pandas** — Data processing
+- **ThreadPoolExecutor** — Concurrent batch processing
 
 ---
 
 ## 📄 License
 
-MIT. See [LICENSE](LICENSE).
+MIT — See [LICENSE](LICENSE).
 
 ---
 
-## 📝 Author
+## 👤 Author
 
-**nyota佳树** — AI Product Manager, interaction design background.  
-Bridging human-centric design and machine-driven infrastructure.
+**nyota佳树 (Nyota)** — AI Product Manager with experience at ByteDance and other major tech companies. Building tools that bridge the gap between human-centric product design and AI infrastructure.
+
+- GitHub: [@Nyota-tree](https://github.com/Nyota-tree)
+
+---
+
+## 🙏 Acknowledgments
+
+Built on the shoulders of research in LLM-as-a-Judge evaluation:
+- [G-Eval](https://arxiv.org/abs/2303.16634) (Microsoft & Alibaba, 2023) — NLG Evaluation using GPT-4 with Better Human Alignment
+- [JudgeLM](https://arxiv.org/abs/2310.17631) (2023) — Fine-tuned Large Language Models as Scalable Judges
