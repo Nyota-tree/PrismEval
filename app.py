@@ -756,7 +756,7 @@ def render_phase_result():
 
 # Banner path (project static folder)
 def _banner_path() -> Optional[str]:
-    p = Path(__file__).resolve().parent / "static" / "banner.png"
+    p = Path(__file__).resolve().parent / "static" / "banner.jpg"
     return str(p) if p.exists() else None
 
 
