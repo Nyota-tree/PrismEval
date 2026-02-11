@@ -92,7 +92,27 @@ st.set_page_config(
 
 
 def apply_mobile_optimization() -> None:
-    """Inject CSS for mobile viewport: scrollable tables, sidebar drawer, tighter padding, banner scaling."""
+    """Inject viewport meta + CSS so mobile media queries apply: scrollable tables, sidebar drawer, padding, banner scaling."""
+    # Ensure viewport meta so @media (max-width: 768px) triggers on phones (script runs via st.html on Streamlit 1.54+).
+    _viewport_html = """
+    <script>
+    (function(){
+        var m = document.querySelector('meta[name="viewport"]');
+        if (!m) {
+            m = document.createElement('meta');
+            m.name = 'viewport';
+            m.content = 'width=device-width, initial-scale=1';
+            document.head.appendChild(m);
+        } else if ((m.getAttribute('content') || '').indexOf('device-width') === -1) {
+            m.setAttribute('content', 'width=device-width, initial-scale=1');
+        }
+    })();
+    </script>
+    """
+    try:
+        st.html(_viewport_html, unsafe_allow_javascript=True)
+    except TypeError:
+        pass  # Streamlit < 1.54 without unsafe_allow_javascript
     st.markdown("""
         <style>
         @media (max-width: 768px) {
@@ -119,9 +139,6 @@ def apply_mobile_optimization() -> None:
         }
         </style>
     """, unsafe_allow_html=True)
-
-
-apply_mobile_optimization()
 
 # Constants
 REQUIRED_CSV_COLUMNS = ["question"]
@@ -829,6 +846,7 @@ def _banner_path() -> Optional[str]:
 
 # Main
 def main():
+    apply_mobile_optimization()
     init_session_state()
     render_sidebar()
 
