@@ -20,6 +20,8 @@ EVAL_COLUMNS = [
     "factuality_score",
     "north_star_score",
     "completeness_score",
+    "adherence_score",
+    "attractiveness_score",
     "weighted_total_score",
     "decision",
     "reason",
@@ -150,6 +152,8 @@ def batch_evaluate(
             df.at[idx, "factuality_score"] = eval_result.get("factuality_score")
             df.at[idx, "north_star_score"] = eval_result.get("north_star_score")
             df.at[idx, "completeness_score"] = eval_result.get("completeness_score")
+            df.at[idx, "adherence_score"] = eval_result.get("adherence_score")
+            df.at[idx, "attractiveness_score"] = eval_result.get("attractiveness_score")
             df.at[idx, "weighted_total_score"] = eval_result.get("weighted_total_score")
             df.at[idx, "decision"] = eval_result.get("decision")
             df.at[idx, "reason"] = eval_result.get("reason")

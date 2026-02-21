@@ -215,3 +215,80 @@ MIT — See [LICENSE](LICENSE).
 Built on the shoulders of research in LLM-as-a-Judge evaluation:
 - [G-Eval](https://arxiv.org/abs/2303.16634) (Microsoft & Alibaba, 2023) — NLG Evaluation using GPT-4 with Better Human Alignment
 - [JudgeLM](https://arxiv.org/abs/2310.17631) (2023) — Fine-tuned Large Language Models as Scalable Judges
+
+---
+
+## 🔌 MCP Server
+
+PrismEval ships with an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server so Claude Code, OpenClaw, and any other MCP-compatible agent can call the quality-judge pipeline as a first-class tool.
+
+### Installation
+
+```bash
+pip install mcp>=1.0.0
+# or re-install all dependencies
+pip install -r requirements.txt
+```
+
+### Configuration
+
+Make sure your `.env` contains an API key for the provider configured in `configs/default.yaml` (default: DeepSeek):
+
+```
+DEEPSEEK_API_KEY=sk-...
+```
+
+### Start the server manually
+
+```bash
+python mcp_server.py
+# Server enters stdio-transport mode and waits for MCP client messages.
+```
+
+### Claude Code integration
+
+Add the following to your Claude Code MCP settings (`~/.claude/settings.json` → `mcpServers`):
+
+```json
+{
+  "mcpServers": {
+    "prism-eval": {
+      "command": "python",
+      "args": ["/absolute/path/to/PrismEval/mcp_server.py"]
+    }
+  }
+}
+```
+
+After restarting Claude Code, run `/mcp` to confirm the `prism-eval` server and `evaluate` tool are visible.
+
+### Tool: `evaluate`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `input` | string | Yes | Original question / prompt given to the LLM |
+| `output` | string | Yes | LLM-generated text to evaluate |
+| `criteria` | string | No | Extra scoring criteria appended to the default template |
+
+**Example response:**
+
+```json
+{
+  "priority": "P0",
+  "factuality_score": 8.5,
+  "completeness_score": 9.0,
+  "adherence_score": 8.0,
+  "attractiveness_score": 8.5,
+  "north_star_score": 8.5,
+  "weighted_total_score": 85.0,
+  "decision": "PUBLISH",
+  "reason": "High Quality Score",
+  "reasoning": "The response is factually accurate and directly addresses...",
+  "pass": true
+}
+```
+
+Decision rules mirror the main pipeline:
+- **PUBLISH** — `weighted_total_score` ≥ 75
+- **REVIEW** — `weighted_total_score` < 75
+- **REJECT** — `factuality_score` < 5 (0–10 scale) or < 50 (0–100 scale)

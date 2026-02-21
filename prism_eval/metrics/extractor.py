@@ -232,10 +232,27 @@ def extract_evaluation(response_json: Dict[str, Any]) -> Dict[str, Any]:
         factuality_score = completeness_score = adherence_score = attractiveness_score = north_star_score_val = 0.0
 
     # Scale: 0–10 vs 0–100
+    # Read the model-reported weighted total first to use as a tiebreaker.
+    # If any individual score > 10 → definitely 0–100 scale.
+    # If all individual scores ≤ 10 AND model_weighted > 10 → 0–10 scale.
+    # If all individual scores ≤ 10 AND model_weighted ≤ 10 → 0–100 scale with low scores.
+    # If model_weighted is absent and all scores ≤ 10 → assume 0–10 (most eval prompts use it).
     max_score = max(factuality_score, completeness_score, adherence_score, attractiveness_score)
-    is_0_10_scale = max_score <= 10 and max_score > 0
+    model_weighted_raw = response_json.get("weighted_total_score")
+    try:
+        _mw_hint = float(model_weighted_raw) if model_weighted_raw is not None else None
+    except (ValueError, TypeError):
+        _mw_hint = None
 
-    model_weighted = response_json.get("weighted_total_score")
+    if max_score > 10:
+        is_0_10_scale = False
+    elif max_score > 0:
+        # Use weighted total as tiebreaker: >10 means individual scores are on 0–10 scale
+        is_0_10_scale = _mw_hint is None or _mw_hint > 10
+    else:
+        is_0_10_scale = False
+
+    model_weighted = model_weighted_raw
     if model_weighted is not None:
         try:
             model_weighted = float(model_weighted)
@@ -290,7 +307,7 @@ def extract_evaluation(response_json: Dict[str, Any]) -> Dict[str, Any]:
         "decision": decision,
         "reason": reason,
         "reasoning": response_json.get("reasoning", ""),
-        "pass": response_json.get("pass", False),
+        "pass": decision == "PUBLISH",
     }
 
 
