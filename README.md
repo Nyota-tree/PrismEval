@@ -222,6 +222,8 @@ Built on the shoulders of research in LLM-as-a-Judge evaluation:
 
 PrismEval ships with an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server so Claude Code, OpenClaw, and any other MCP-compatible agent can call the quality-judge pipeline as a first-class tool.
 
+> **Note:** The MCP server allows you to call PrismEval's evaluation tool directly in Claude Code without manually running command-line commands or opening the web interface. Once configured, you can use the `evaluate` tool directly in conversations to evaluate LLM-generated outputs.
+
 ### Installation
 
 ```bash
@@ -262,6 +264,27 @@ Add the following to your Claude Code MCP settings (`~/.claude/settings.json` �
 
 After restarting Claude Code, run `/mcp` to confirm the `prism-eval` server and `evaluate` tool are visible.
 
+### Usage in Claude Code
+
+Once configured, you can use the `evaluate` tool directly in Claude Code conversations. Here's how:
+
+**Example 1: Basic evaluation**
+```
+Please use the evaluate tool to assess the following:
+- input: "What is artificial intelligence?"
+- output: "Artificial Intelligence (AI) is a branch of computer science dedicated to creating systems capable of performing tasks that typically require human intelligence."
+```
+
+**Example 2: With custom criteria**
+```
+Please evaluate this response with the following scoring criteria:
+- input: "How to learn programming?"
+- output: "Learning programming requires mastering basic syntax, algorithms, and data structures..."
+- criteria: "Focus on the practicality and actionability of the answer, and its friendliness to beginners"
+```
+
+The tool will return structured scores and an automated decision (PUBLISH/REVIEW/REJECT).
+
 ### Tool: `evaluate`
 
 | Parameter | Type | Required | Description |
@@ -292,3 +315,19 @@ Decision rules mirror the main pipeline:
 - **PUBLISH** — `weighted_total_score` ≥ 75
 - **REVIEW** — `weighted_total_score` < 75
 - **REJECT** — `factuality_score` < 5 (0–10 scale) or < 50 (0–100 scale)
+
+### Troubleshooting
+
+**Issue: `evaluate` tool not visible in Claude Code**
+- Ensure you have restarted Claude Code
+- Check that the path in `settings.json` is correct (use absolute path)
+- Run `/mcp` command to check MCP server status
+
+**Issue: Tool call fails with API error**
+- Check that the `.env` file contains the correct API key
+- Verify that the provider configured in `configs/default.yaml` matches the key in `.env`
+- Default provider is DeepSeek, ensure `DEEPSEEK_API_KEY` is set
+
+**Issue: Evaluation returns an error**
+- Check that the evaluation prompt template in `configs/prompts.yaml` is complete
+- Ensure all dependencies are installed in your Python environment: `pip install -r requirements.txt`
